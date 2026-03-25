@@ -53,13 +53,17 @@
         </div>
 
         <div class="row mb-4 bg-light p-3 border rounded mx-0">
-            <div class="col-md-8">
+            <div class="col-md-5">
                 <label class="form-label fw-bold">1. Responsável (Vereador/Diretor):</label>
                 <input class="form-control border-primary" list="listaResponsaveisDatalist" id="selectResponsavel" placeholder="Aguarde o carregamento..." disabled>
                 <datalist id="listaResponsaveisDatalist"></datalist>
             </div>
             <div class="col-md-4 mt-3 mt-md-0">
-                <label class="form-label fw-bold">2. Mês/Ano de Referência:</label>
+                <label class="form-label fw-bold">2. E-mail Institucional:</label>
+                <input type="email" id="inputEmail" class="form-control border-primary" placeholder="exemplo@cmc.pr.gov.br">
+            </div>
+            <div class="col-md-3 mt-3 mt-md-0">
+                <label class="form-label fw-bold">3. Mês/Ano:</label>
                 <input type="month" id="inputMesAno" class="form-control border-primary">
             </div>
         </div>
@@ -95,11 +99,11 @@
                 
                 <div class="row text-center mb-3">
                     <div class="col-md-6 border-end">
-                        <h6 class="text-muted fw-bold mb-3">PASSO 1: Gerar e Salvar</h6>
+                        <h6 class="text-muted fw-bold mb-3">PASSO 1: Gerar PDF</h6>
                         <button id="btnGerarPDF" class="btn btn-success btn-lg w-100 fw-bold shadow-sm mb-2">
                             📄 1. Gerar Relatório PDF
                         </button>
-                        <p class="small text-muted">Gere o arquivo e assine (fisicamente ou GOV.BR).</p>
+                        <p class="small text-muted">Gere o arquivo e encaminhe conforme passo 2.</p>
                     </div>
                     
                     <div class="col-md-6">
@@ -123,7 +127,7 @@
     // URL PARA LER (CSV)
     const LINK_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBfAQVTVAHOnwwyNHd5p-C5XRlnPuQpoCiVKL0Q3xRVS6F2pMsZA2Izi2vR0Yeea7CqOyFRzmJhdng/pub?gid=0&single=true&output=csv";
     
-    // URL PARA SALVAR (App Script)
+    // URL PARA SALVAR DADOS NO GOOGLE SHEETS
     const URL_APPSCRIPT_SALVAR = "https://script.google.com/macros/s/AKfycbycZt1tTHzhMPSqDo1ipjUVDt9TfXCgMgpl3S9JnJkFIX9wO8WSJFu_-Bue0f62sbD9wA/exec";
 
     let baseGeral = [];
@@ -138,7 +142,6 @@
         tentaConectarPlanilha();
     });
 
-    // Função para buscar dados ignorando acentos e espaços
     function buscarValorInteligente(objServidor, termosBusca) {
         const chaves = Object.keys(objServidor);
         for (let chave of chaves) {
@@ -282,10 +285,6 @@
         }
     });
 
-    // =========================================================================================
-    // 🔒 LÓGICA DE CONTROLE (CHECKBOX E TRAVAS)
-    // =========================================================================================
-    
     window.toggleAllChecks = function(source) {
         const checkboxes = document.querySelectorAll('.check-servidor');
         checkboxes.forEach(chk => chk.checked = source.checked);
@@ -316,18 +315,20 @@
 
     document.getElementById("btnLimpar").addEventListener("click", () => {
         document.getElementById("selectResponsavel").value = "";
+        document.getElementById("inputEmail").value = "";
         document.getElementById("areaTabela").classList.add("d-none");
     });
 
-    // =========================================================================================
-    // 💾 SALVAR NO GOOGLE SHEETS E 📄 GERAR PDF 
-    // =========================================================================================
     document.getElementById("btnGerarPDF").addEventListener("click", async () => {
         const mesAno = document.getElementById("inputMesAno").value;
         if(!mesAno) return alert("Selecione o Mês/Ano.");
         
         const responsavel = document.getElementById("spanResponsavel").textContent;
         if(!responsavel || responsavel === "") return alert("Selecione um responsável primeiro.");
+
+        // VALIDAÇÃO DO E-MAIL
+        const emailResponsavel = document.getElementById("inputEmail").value;
+        if(!emailResponsavel) return alert("Por favor, preencha o E-mail Institucional.");
 
         const registrosParaSalvar = [];
         const dadosPDF = [];
@@ -387,14 +388,12 @@
         const mesesNome = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
         const nomeMes = mesesNome[parseInt(mes) - 1].toLowerCase(); 
 
-        // Função de rodapé reutilizável
         function drawFooter() {
             doc.setFontSize(7); doc.setFont("helvetica", "normal");
             const rodapeLegal = `Em conformidade com a Lei Municipal nº 16.546/2025, os Gabinetes Parlamentares devem enviar à Diretoria de Gestão de Pessoas (DGEP) da Câmara Municipal de Curitiba, para fins de registro e providências legais cabíveis, o formulário de controle de frequência do pessoal nomeado para cargos de provimento em comissão, relativo ao mês anterior.`;
             doc.text(rodapeLegal, 14, 285, { maxWidth: 182, align: 'justify' });
         }
 
-        // INCLUSÃO DA LOGO E BARRA SEPARADORA
         let logoWidth = 35;
         let logoHeight = 15; 
         try {
@@ -412,7 +411,6 @@
         const alturaBarra = Math.max(logoHeight, 14); 
         doc.line(posXBarra, 12, posXBarra, 12 + alturaBarra);
 
-        // CABEÇALHO ALINHADO À ESQUERDA DA BARRA
         const posXTexto = posXBarra + 5; 
         const meioY = 12 + (alturaBarra / 2); 
         
@@ -422,7 +420,6 @@
         doc.setFontSize(10);
         doc.text("OCUPANTES DE CARGOS DE PROVIMENTO EM COMISSÃO", posXTexto, meioY + 3.5);
         
-        // TEXTO DGEP E LEI
         doc.setFontSize(10); doc.setFont("helvetica", "normal");
         doc.text("À", 14, 39);
         doc.setFont("helvetica", "bold");
@@ -436,7 +433,6 @@
         doc.setFont("helvetica", "bold");
         doc.text(`Responsável: ${responsavel}`, 14, 67);
 
-        // TABELA NO PDF
         doc.autoTable({ 
             startY: 74, 
             theme: 'grid', 
@@ -449,41 +445,53 @@
                 1: { halign: 'left', fontStyle: 'normal' },
                 2: { halign: 'left', fontStyle: 'italic', cellWidth: 30 }
             },
-            margin: { bottom: 25 }, // MARGEM SEGURA P/ NÃO ATROPELAR O RODAPÉ
+            margin: { bottom: 25 }, 
             didDrawPage: function (data) {
-                drawFooter(); // DESENHA O RODAPÉ EM TODAS AS PÁGINAS DA TABELA
+                drawFooter(); 
             }
         });
 
-        // BLOCO DE ASSINATURA
+        // BLOCO DE ASSINATURA E CARIMBO DIGITAL
         let finalY = doc.lastAutoTable.finalY + 8; 
 
-        // Verifica se há espaço para a assinatura na página atual (precisa de ~50mm livres)
-        if (finalY + 50 > 275) {
+        // Adiciona margem de segurança extra para caber o carimbo digital sem invadir o rodapé
+        if (finalY + 60 > 275) {
             doc.addPage();
-            finalY = 20; // Reseta Y para o topo da nova página
-            drawFooter(); // Garante que a página nova também tenha o rodapé da Lei
+            finalY = 20; 
+            drawFooter(); 
         }
         
         doc.setFontSize(8); doc.setFont("helvetica", "italic");
         const textoSPAE = "*Em caso de afastamento por motivos de saúde, superior a 3 dias, enviar o atestado à Saúde Ocupacional por meio de Comunicado específico do SPAE.";
         doc.text(textoSPAE, 14, finalY, { maxWidth: 182 });
 
+        // Formata Data e Hora exatas do PC
+        const dataAgora = new Date();
+        const dataFormatada = dataAgora.toLocaleDateString('pt-BR');
+        const horaFormatada = dataAgora.toLocaleTimeString('pt-BR');
+
         doc.setFontSize(10); doc.setFont("helvetica", "normal");
-        const dataHoje = new Date().toLocaleDateString('pt-BR');
         doc.text(`Data: ${dataHoje}`, 14, finalY + 15);
         
-        doc.text("____________________________________________________", 105, finalY + 35, { align: 'center' });
-        doc.text("Assinatura do Responsável", 105, finalY + 40, { align: 'center' });
+        doc.text("____________________________________________________", 105, finalY + 30, { align: 'center' });
+        doc.text("Assinatura do Responsável", 105, finalY + 35, { align: 'center' });
         doc.setFont("helvetica", "bold"); 
-        doc.text(responsavel, 105, finalY + 45, { align: 'center' });
+        doc.text(responsavel, 105, finalY + 40, { align: 'center' });
+
+        // CARIMBO DIGITAL
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 100); // Texto cinza para o carimbo
+        doc.text(`Documento gerado por: ${emailResponsavel}`, 105, finalY + 46, { align: 'center' });
+        doc.text(`Data e Hora da geração: ${dataFormatada} às ${horaFormatada}`, 105, finalY + 50, { align: 'center' });
+        doc.setTextColor(0, 0, 0); // Volta para preto
 
         doc.save(`Frequencia_${responsavel.replace(/\s+/g, '_')}_${ano}_${mes}.pdf`);
 
         // FIM DO PROCESSO
         btn.innerHTML = textoOriginal;
         btn.disabled = false;
-        alert("✅ Relatório PDF gerado e dados salvos no sistema com sucesso!");
+        alert("✅ Dados enviados com sucesso. Não se esqueça de enviar o documento através do botão no PASSO 2.");
     });
 </script>
 
