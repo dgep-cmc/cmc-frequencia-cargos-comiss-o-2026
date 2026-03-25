@@ -96,7 +96,6 @@
             </div>
 
             <div class="mt-4 border-top pt-4">
-                
                 <div class="row text-center mb-3">
                     <div class="col-md-6 border-end">
                         <h6 class="text-muted fw-bold mb-3">PASSO 1: Gerar PDF</h6>
@@ -119,7 +118,7 @@
                     <button id="btnLimpar" class="btn btn-outline-secondary btn-sm fw-bold">🔄 Limpar Tela</button>
                 </div>
             </div>
-            </div>
+        </div>
     </div>
 </div>
 
@@ -319,7 +318,8 @@
         document.getElementById("areaTabela").classList.add("d-none");
     });
 
-    document.getElementById("btnGerarPDF").addEventListener("click", async () => {
+    // Removido o 'async' para o processamento ser imediato
+    document.getElementById("btnGerarPDF").addEventListener("click", () => {
         const mesAno = document.getElementById("inputMesAno").value;
         if(!mesAno) return alert("Selecione o Mês/Ano.");
         
@@ -362,25 +362,22 @@
         btn.innerHTML = "⏳ Processando...";
         btn.disabled = true;
 
-        // 1. TENTA SALVAR NO GOOGLE SHEETS
+        // 1. TENTA SALVAR NO GOOGLE SHEETS (Assíncrono no background)
         const pacoteDeDados = {
             mesAno: mesAno,
             vereador: responsavel, 
             registros: registrosParaSalvar
         };
 
-        try {
-            await fetch(URL_APPSCRIPT_SALVAR, {
-                method: "POST",
-                mode: "no-cors", 
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify(pacoteDeDados)
-            });
-        } catch (erro) {
-            console.error("Erro ao salvar no Sheets:", erro);
-        }
+        // Disparo direto (Fire and Forget) - Não trava mais a tela!
+        fetch(URL_APPSCRIPT_SALVAR, {
+            method: "POST",
+            mode: "no-cors", 
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify(pacoteDeDados)
+        }).catch(erro => console.error("Erro ao salvar no Sheets:", erro));
 
-        // 2. GERAÇÃO DO PDF 
+        // 2. GERAÇÃO DO PDF (Imediato)
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4');
         
@@ -451,10 +448,8 @@
             }
         });
 
-        // BLOCO DE ASSINATURA E CARIMBO DIGITAL
         let finalY = doc.lastAutoTable.finalY + 8; 
 
-        // Adiciona margem de segurança extra para caber o carimbo digital sem invadir o rodapé
         if (finalY + 60 > 275) {
             doc.addPage();
             finalY = 20; 
@@ -465,13 +460,12 @@
         const textoSPAE = "*Em caso de afastamento por motivos de saúde, superior a 3 dias, enviar o atestado à Saúde Ocupacional por meio de Comunicado específico do SPAE.";
         doc.text(textoSPAE, 14, finalY, { maxWidth: 182 });
 
-        // Formata Data e Hora exatas do PC
         const dataAgora = new Date();
         const dataFormatada = dataAgora.toLocaleDateString('pt-BR');
         const horaFormatada = dataAgora.toLocaleTimeString('pt-BR');
 
         doc.setFontSize(10); doc.setFont("helvetica", "normal");
-        doc.text(`Data: ${dataHoje}`, 14, finalY + 15);
+        doc.text(`Data: ${dataFormatada}`, 14, finalY + 15);
         
         doc.text("____________________________________________________", 105, finalY + 30, { align: 'center' });
         doc.text("Assinatura do Responsável", 105, finalY + 35, { align: 'center' });
@@ -481,10 +475,10 @@
         // CARIMBO DIGITAL
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(100, 100, 100); // Texto cinza para o carimbo
+        doc.setTextColor(100, 100, 100);
         doc.text(`Documento gerado por: ${emailResponsavel}`, 105, finalY + 46, { align: 'center' });
         doc.text(`Data e Hora da geração: ${dataFormatada} às ${horaFormatada}`, 105, finalY + 50, { align: 'center' });
-        doc.setTextColor(0, 0, 0); // Volta para preto
+        doc.setTextColor(0, 0, 0); 
 
         doc.save(`Frequencia_${responsavel.replace(/\s+/g, '_')}_${ano}_${mes}.pdf`);
 
